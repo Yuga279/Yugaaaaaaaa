@@ -1,0 +1,17 @@
+---
+description: Architectural context and constraints for this repository
+globs:
+alwaysApply: true
+---
+
+# Architecture
+
+- `.claude/prompts/architecture.md` describes this system's stack, layout, entry
+  points, and data flow. Consult it before designing anything that spans modules.
+- Respect existing layer boundaries: do not import across layers in directions
+  the current code avoids (e.g. domain logic importing from the web layer).
+- Significant architectural changes (new services, new layers, new cross-cutting
+  patterns) must be proposed and agreed before implementation — do not introduce
+  them silently inside a feature change.
+- Keep changes localized: a feature should touch the minimum set of modules
+  consistent with the existing architecture.

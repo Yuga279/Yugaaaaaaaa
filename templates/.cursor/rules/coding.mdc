@@ -1,0 +1,20 @@
+---
+description: Core coding standards for this repository
+globs:
+alwaysApply: true
+---
+
+# Coding Standards
+
+- `docs/CODEBASE_STANDARDS.md` is the source of truth for all conventions in this
+  repository — naming, structure, error handling, testing. Read it and follow it.
+  If it conflicts with your general habits, the document wins.
+- Match the style of the surrounding code: naming, comment density, idioms,
+  import ordering. New code should be indistinguishable from existing code.
+- Prefer extending existing modules and reusing existing utilities over creating
+  new abstractions. Before writing new code, search the repository for at least
+  three similar implementations and follow the closest existing pattern.
+- Never rename files, folders, methods, or classes unless the repository already
+  follows that pattern.
+- New behavior requires tests, written in this repo's existing test style.
+- Never commit secrets, credentials, or environment-specific values.

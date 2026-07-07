@@ -1,0 +1,34 @@
+{
+  "name": "@yugarajan/claude-engineer",
+  "version": "1.3.0",
+  "description": "Bootstrap repositories with a shared Claude Code + Cursor engineering setup: commands, prompts, rules and codebase standards.",
+  "bin": {
+    "claude-engineer": "./bin/claude-engineer.js"
+  },
+  "files": [
+    "bin",
+    "templates"
+  ],
+  "scripts": {
+    "test": "node bin/claude-engineer.js --help"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "cursor",
+    "ai",
+    "scaffolding",
+    "cli"
+  ],
+  "author": "Yugarajan S <yugarajan.s@ecgroup-intl.com>",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.14"
+  },
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "commander": "^9.5.0",
+    "fs-extra": "^11.3.6",
+    "prompts": "^2.4.2"
+  }
+}

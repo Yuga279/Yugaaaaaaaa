@@ -1,0 +1,19 @@
+---
+description: How to review code in this repository
+globs:
+alwaysApply: false
+---
+
+# Code Review
+
+When asked to review code in this repository:
+
+- Use `docs/CODEBASE_STANDARDS.md` as the rubric; cite the specific rule when
+  flagging a violation.
+- Priority order: correctness bugs > standards violations > security issues >
+  missing tests > simplification opportunities.
+- Every finding needs: severity (blocker / should-fix / nit), file and line,
+  what is wrong, and a concrete suggested fix.
+- Only report real findings — no padding, no generic praise, no speculative
+  issues you cannot point to in the diff.
+- End with a verdict: approve, approve-with-nits, or request-changes.
