@@ -10,7 +10,7 @@
     "templates"
   ],
   "scripts": {
-    "test": "node bin/claude-engineer.js --help"
+    "test": "node bin/claude-engineer.js --help && node test/smoke.js"
   },
   "keywords": [
     "claude",

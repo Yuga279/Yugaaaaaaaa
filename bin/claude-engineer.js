@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const { spawnSync } = require("child_process");
+const crypto = require("crypto");
 const os = require("os");
 const path = require("path");
 
@@ -10,6 +11,12 @@ const fse = require("fs-extra");
 const prompts = require("prompts");
 
 const TEMPLATES_DIR = path.join(__dirname, "..", "templates");
+
+if (!fse.existsSync(TEMPLATES_DIR)) {
+  console.error(chalk.red("Templates directory is missing: ") + TEMPLATES_DIR);
+  console.error("This install looks corrupted — try reinstalling the package.");
+  process.exit(1);
+}
 
 // Each supported AI tool owns a set of template files. `detect` is the path
 // whose presence in a repo means that tool is configured there — sync and
@@ -65,6 +72,17 @@ function listTemplateFiles(dir = TEMPLATES_DIR, base = TEMPLATES_DIR) {
 
 function isManaged(rel) {
   return MANAGED_PREFIXES.some((p) => rel.startsWith(p + path.sep));
+}
+
+function hashFile(file) {
+  return crypto.createHash("sha256").update(fse.readFileSync(file)).digest("hex");
+}
+
+/** Does the on-disk copy of a managed template differ from the shipped version? */
+function isStale(rel) {
+  const dest = path.join(process.cwd(), rel);
+  if (!fse.existsSync(dest)) return false;
+  return hashFile(dest) !== hashFile(path.join(TEMPLATES_DIR, rel));
 }
 
 function fileBelongsTo(rel, toolKeys) {
@@ -169,8 +187,13 @@ function installGlobal() {
     const src = path.join(TEMPLATES_DIR, ".claude", rel);
     const dest = path.join(home, ".claude", rel);
     const exists = fse.existsSync(dest);
-    fse.ensureDirSync(path.dirname(dest));
-    fse.copySync(src, dest, { overwrite: true });
+    try {
+      fse.ensureDirSync(path.dirname(dest));
+      fse.copySync(src, dest, { overwrite: true });
+    } catch (err) {
+      console.error(chalk.red(`  failed   ${path.join("~", ".claude", rel)}: ${err.message}`));
+      continue;
+    }
     (exists ? updated : created).push(path.join("~", ".claude", rel));
   }
   return { created, updated, skipped: [] };
@@ -192,6 +215,10 @@ function copyTemplates({ tools, force = false, managedOnly = false }) {
 
     if (exists && !force && !managedOnly) {
       skipped.push(rel);
+      continue;
+    }
+
+    if (managedOnly && exists && !isStale(rel)) {
       continue;
     }
 
@@ -283,11 +310,15 @@ program
     console.log(chalk.bold("Syncing managed files for: ") + toolLabels(tools) + "\n");
     if (opts.dryRun) {
       const cwd = process.cwd();
+      let changes = 0;
       for (const rel of listTemplateFiles()) {
         if (!isManaged(rel) || !fileBelongsTo(rel, tools)) continue;
         const exists = fse.existsSync(path.join(cwd, rel));
+        if (exists && !isStale(rel)) continue;
+        changes++;
         console.log((exists ? chalk.cyan("  would update  ") : chalk.green("  would create  ")) + rel);
       }
+      if (!changes) console.log(chalk.gray("  nothing to do — all managed files are current"));
       return;
     }
     report(copyTemplates({ tools, managedOnly: true }));
@@ -306,7 +337,8 @@ program
     }
     console.log(chalk.bold("Checking setup for: ") + toolLabels(tools) + "\n");
 
-    let ok = true;
+    let missing = 0;
+    let outdated = 0;
     const required = SHARED_FILES.slice();
     if (tools.indexOf("claude") !== -1) required.push(".claude", path.join(".claude", "commands"), path.join(".claude", "prompts"), "CLAUDE.md");
     if (tools.indexOf("cursor") !== -1) required.push(path.join(".cursor", "rules"));
@@ -314,21 +346,25 @@ program
 
     for (const rel of required) {
       const exists = fse.existsSync(path.join(process.cwd(), rel));
-      if (!exists) ok = false;
+      if (!exists) missing++;
       console.log((exists ? chalk.green("  ok       ") : chalk.red("  missing  ")) + rel);
     }
     for (const rel of listTemplateFiles()) {
       if (!isManaged(rel) || !fileBelongsTo(rel, tools)) continue;
-      if (!fse.existsSync(path.join(process.cwd(), rel))) {
-        ok = false;
+      const dest = path.join(process.cwd(), rel);
+      if (!fse.existsSync(dest)) {
+        missing++;
+        console.log(chalk.red("  missing  ") + rel);
+      } else if (isStale(rel)) {
+        outdated++;
         console.log(chalk.yellow("  outdated ") + rel + chalk.gray(" (run `claude-engineer sync`)"));
       }
     }
-    if (ok) {
+    if (!missing && !outdated) {
       console.log("\n" + chalk.green("Everything looks good."));
     } else {
       console.log(
-        "\n" + chalk.red("Problems found.") + " Run " +
+        "\n" + chalk.red(`Problems found: ${missing} missing, ${outdated} outdated.`) + " Run " +
         chalk.yellow("claude-engineer init") + " or " + chalk.yellow("claude-engineer sync") + " to fix."
       );
       process.exitCode = 1;
