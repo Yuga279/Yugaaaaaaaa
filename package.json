@@ -1,6 +1,6 @@
 {
   "name": "@yugarajan/claude-engineer",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Bootstrap repositories with a shared Claude Code + Cursor engineering setup: commands, prompts, rules and codebase standards.",
   "bin": {
     "claude-engineer": "./bin/claude-engineer.js"
