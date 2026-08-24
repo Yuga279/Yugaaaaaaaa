@@ -16,6 +16,7 @@ This repository uses a shared engineering setup managed by `@yugarajan/claude-en
 | `/implement <feature>` | Implement a feature following the standards, with compliance review |
 | `/review [base]` | Review the current branch against the standards |
 | `/bugfix <bug>` | Reproduction-first bug fixing workflow |
+| `/change-request <folder> <change>` | Change an existing feature: reads its history first, confirms understanding, then implements and logs the change to `CHANGELOG.md` in that folder |
 
 ## Rules for every coding task
 

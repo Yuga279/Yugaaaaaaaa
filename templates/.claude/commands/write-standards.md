@@ -34,9 +34,13 @@ Understand: folder structure, layering, dependency direction, module boundaries,
 
 ## Phase 4 — Frontend analysis (if the repo has a frontend)
 
-Read ALL frontend applications. Discover the structure actually in use — for example (adapt to the frameworks present): component hierarchy, page organization, views, layouts, widgets, base components, mixins/composables, stores (Vuex/Pinia/Redux/etc.), state machines (XState), router and navigation, services, API clients, DTOs, interfaces, enums, constants, utilities, filters, plugins, directives, CSS/SCSS, themes, UI libraries (Bootstrap/Vuetify/Tailwind), icons, animations.
+Read ALL frontend applications. Discover the structure actually in use — for example (adapt to the frameworks present): component hierarchy, page organization, views, layouts, widgets, base components, mixins/composables, stores (Vuex/Pinia/Redux/etc.), state machines (XState), router and navigation, services, API clients, DTOs, interfaces, enums, constants, utilities, filters, plugins, directives, icons, animations.
 
-Determine naming patterns for: folders, files, components, events, props, emits, stores, actions, mutations, getters, machines, models, interfaces, API clients.
+Pin down the styling story specifically — do not skip this: which approach is actually used (CSS Modules, Tailwind, styled-components/emotion, SCSS/LESS, plain CSS, CSS-in-JS), any design-token or theme system, which UI/component library is in use (Bootstrap/Vuetify/MUI/Tailwind UI/shadcn/none), and how component files are organized on disk (styles/tests co-located with the component vs. separate `styles/`/`tests/` trees, atomic-design vs. feature-based folders).
+
+Determine naming patterns for: folders, files, components, events, props, emits, stores, actions, mutations, getters, machines, models, interfaces, API clients, CSS classes/custom properties.
+
+Separately, identify the **mandatory** frontend stack — not just what one file imports, but what's required for all new code: is there exactly one state-management library in use across features (mandatory) or several competing ones (legacy vs. preferred — document both)? Is there a lint rule, `package.json` `overrides`, or CONTRIBUTING note that bans an alternative? This feeds the Required Tech Stack section, not just Frontend Standards.
 
 ## Phase 5 — Backend analysis (if the repo has a backend)
 
@@ -63,5 +67,7 @@ Observe multiple completed features in git history. Identify: files typically ad
 Generate `docs/CODEBASE_STANDARDS.md` following the structure defined in `.claude/prompts/codebase-standards.md` (if this repo has no such file, use the global copy at `~/.claude/prompts/codebase-standards.md`).
 
 Every section must contain examples taken directly from the repository (real file paths, real names, real snippets). Include only sections relevant to technologies actually present in the repo. Preserve any existing sections marked `<!-- manual -->`.
+
+Start the document with a table of contents (one line per section, linking to its heading) — other commands read this file on every task and are told to jump to relevant sections rather than read it end to end once it's large, which only works if the TOC lets them do that. Say each rule once; don't restate a convention in two sections.
 
 The repository is always the source of truth.

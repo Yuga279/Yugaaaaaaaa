@@ -40,6 +40,7 @@ test("init --all scaffolds every tool", () => {
   const res = run(["init", "--all"], repo);
   assert.strictEqual(res.status, 0, res.stderr || res.stdout);
   assert.ok(fs.existsSync(path.join(repo, ".claude", "commands", "learn-codebase.md")));
+  assert.ok(fs.existsSync(path.join(repo, ".claude", "commands", "change-request.md")));
   assert.ok(fs.existsSync(path.join(repo, ".cursor", "rules", "coding.mdc")));
   assert.ok(fs.existsSync(path.join(repo, "AGENTS.md")));
   assert.ok(fs.existsSync(path.join(repo, "docs", "CODEBASE_STANDARDS.md")));

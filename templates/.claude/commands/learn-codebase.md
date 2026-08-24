@@ -15,6 +15,7 @@ Study this codebase so future sessions can work in it effectively. This command 
    - How tests are written and run
    - Build, lint, and CI commands
    - External services the system depends on
+   - If a frontend exists: the mandatory stack (framework, state management, UI/component library — read `package.json` deps, `.eslintrc*` rules that ban alternatives, and README/CONTRIBUTING requirements, not just what one file happens to import), how styling is done (CSS Modules, Tailwind, styled-components, SCSS, CSS-in-JS — whichever is actually in use, and any design-token/theme system), and how component files/folders are structured (co-located styles/tests, atomic/feature-based organization, naming pattern)
 4. Write your findings into `.claude/prompts/architecture.md`, replacing its placeholder content. Keep it factual and concise — it is loaded as context by other commands, so every line must earn its place.
 5. Finish with a short summary in chat of the 5 most important things a new engineer should know about this repo, and recommend running `/write-standards` next if `docs/CODEBASE_STANDARDS.md` is still a skeleton.
 

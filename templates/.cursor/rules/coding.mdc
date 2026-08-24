@@ -18,3 +18,5 @@ alwaysApply: true
   follows that pattern.
 - New behavior requires tests, written in this repo's existing test style.
 - Never commit secrets, credentials, or environment-specific values.
+- Before relying on a third-party library API's shape from memory, verify it against the version actually installed in this repo (its type definitions or lockfile version) — do not assume a method signature or config shape.
+- Before considering a change done, re-read the diff adversarially: what input breaks it, and was the error path actually exercised, not just the happy path?

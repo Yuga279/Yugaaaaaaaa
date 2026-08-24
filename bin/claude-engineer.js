@@ -146,6 +146,27 @@ function printDiff(rel) {
   }
 }
 
+/**
+ * How many commits have landed since a file was last touched — a proxy for
+ * "has the codebase moved on since the standards doc was last regenerated."
+ * Returns null if this isn't a git repo, or the file has no commit history.
+ */
+function commitsSinceLastChange(rel) {
+  const lastCommit = spawnSync("git", ["log", "-1", "--format=%H", "--", rel], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+  });
+  const hash = (lastCommit.stdout || "").trim();
+  if (lastCommit.status !== 0 || !hash) return null;
+
+  const count = spawnSync("git", ["rev-list", "--count", `${hash}..HEAD`], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+  });
+  if (count.status !== 0) return null;
+  return parseInt((count.stdout || "").trim(), 10) || 0;
+}
+
 /** Best-effort, non-blocking check against the npm registry — silently skipped if offline. */
 function checkForUpdate() {
   return new Promise((resolve) => {
@@ -443,6 +464,19 @@ program
         `this repo was last synced with claude-engineer ${config.version}, you're running ${PKG.version} — run ` +
         chalk.yellow("claude-engineer sync") + " to catch it up\n"
       );
+    }
+
+    const STANDARDS_STALE_THRESHOLD = 30;
+    const standardsFile = path.join("docs", "CODEBASE_STANDARDS.md");
+    if (fse.existsSync(path.join(process.cwd(), standardsFile))) {
+      const commitsSince = commitsSinceLastChange(standardsFile);
+      if (commitsSince !== null && commitsSince > STANDARDS_STALE_THRESHOLD) {
+        console.log(
+          chalk.yellow(`  note     `) +
+          `${commitsSince} commits have landed since docs/CODEBASE_STANDARDS.md was last updated — it may no longer reflect the codebase. Consider re-running ` +
+          chalk.yellow("/write-standards") + "\n"
+        );
+      }
     }
 
     let missing = 0;
