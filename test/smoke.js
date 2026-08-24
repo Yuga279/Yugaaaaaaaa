@@ -46,15 +46,22 @@ test("init --all scaffolds every tool", () => {
 });
 
 test("doctor passes right after init", () => {
-  const res = run(["doctor"], repo);
+  const res = run(["doctor", "--skip-update-check"], repo);
   assert.strictEqual(res.status, 0, res.stdout + res.stderr);
   assert.ok(/Everything looks good/.test(res.stdout));
+});
+
+test("init writes .claude-engineer.json recording tools/scope/version", () => {
+  const config = JSON.parse(fs.readFileSync(path.join(repo, ".claude-engineer.json"), "utf8"));
+  assert.deepStrictEqual(config.tools.sort(), ["agents", "claude", "cursor"]);
+  assert.strictEqual(config.scope, "project");
+  assert.ok(config.version);
 });
 
 test("doctor flags a hand-edited managed file as outdated", () => {
   const managed = path.join(repo, ".claude", "commands", "review.md");
   fs.appendFileSync(managed, "\n<!-- local edit -->\n");
-  const res = run(["doctor"], repo);
+  const res = run(["doctor", "--skip-update-check"], repo);
   assert.strictEqual(res.status, 1);
   assert.ok(/outdated/.test(res.stdout), res.stdout);
 });
@@ -68,9 +75,15 @@ test("sync --dry-run reports the drifted file without writing", () => {
   assert.strictEqual(fs.readFileSync(managed, "utf8"), before);
 });
 
+test("sync --dry-run --diff shows the actual line-level change", () => {
+  const res = run(["sync", "--dry-run", "--diff"], repo);
+  assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+  assert.ok(/local edit/.test(res.stdout), res.stdout);
+});
+
 test("sync restores the drifted managed file and doctor passes again", () => {
   run(["sync"], repo);
-  const res = run(["doctor"], repo);
+  const res = run(["doctor", "--skip-update-check"], repo);
   assert.strictEqual(res.status, 0, res.stdout + res.stderr);
 });
 

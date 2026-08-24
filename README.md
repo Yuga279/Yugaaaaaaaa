@@ -64,8 +64,10 @@ Existing files are never overwritten (use `--force` to override). `docs/CODEBASE
 | `claude-engineer learn` | Launch Claude Code with `/learn-codebase` |
 | `claude-engineer standards` | Launch Claude Code with `/write-standards` |
 | `claude-engineer review` | Launch Claude Code with `/review` |
-| `claude-engineer sync` | Update managed files (commands/prompts/rules) to the latest template version — never touches CLAUDE.md, AGENTS.md, or docs/ |
-| `claude-engineer doctor` | Verify the setup is complete and current |
+| `claude-engineer sync` | Update managed files (commands/prompts/rules) to the latest template version — never touches CLAUDE.md, AGENTS.md, or docs/. `--dry-run` previews changes, add `--diff` to see the actual line-level diff |
+| `claude-engineer doctor` | Verify the setup is complete and current, flags files that have drifted from the shipped template, and checks npm for a newer CLI version (`--skip-update-check` to disable) |
+
+`init` records the tools/scope you chose in `.claude-engineer.json` at the repo root — commit it so `doctor` can tell your team which template version a repo was last synced against.
 
 ## Recommended flow for a new repo
 

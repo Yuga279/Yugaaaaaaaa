@@ -2,6 +2,7 @@
 
 const { spawnSync } = require("child_process");
 const crypto = require("crypto");
+const https = require("https");
 const os = require("os");
 const path = require("path");
 
@@ -10,7 +11,9 @@ const { Command } = require("commander");
 const fse = require("fs-extra");
 const prompts = require("prompts");
 
+const PKG = require("../package.json");
 const TEMPLATES_DIR = path.join(__dirname, "..", "templates");
+const CONFIG_FILE = ".claude-engineer.json";
 
 if (!fse.existsSync(TEMPLATES_DIR)) {
   console.error(chalk.red("Templates directory is missing: ") + TEMPLATES_DIR);
@@ -83,6 +86,97 @@ function isStale(rel) {
   const dest = path.join(process.cwd(), rel);
   if (!fse.existsSync(dest)) return false;
   return hashFile(dest) !== hashFile(path.join(TEMPLATES_DIR, rel));
+}
+
+/** Read this repo's .claude-engineer.json, or null if it has none yet. */
+function readConfig() {
+  const file = path.join(process.cwd(), CONFIG_FILE);
+  if (!fse.existsSync(file)) return null;
+  try {
+    return fse.readJsonSync(file);
+  } catch {
+    return null;
+  }
+}
+
+/** Record which tools/scope this repo was configured with and at what package version. */
+function writeConfig(patch) {
+  const file = path.join(process.cwd(), CONFIG_FILE);
+  const existing = readConfig() || {};
+  const config = { ...existing, ...patch, version: PKG.version };
+  fse.writeJsonSync(file, config, { spaces: 2 });
+}
+
+/** Minimal line-based diff (LCS), enough to preview a template update — not a full unified diff. */
+function diffLines(a, b) {
+  const n = a.length;
+  const m = b.length;
+  const dp = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+  for (let i = n - 1; i >= 0; i--) {
+    for (let j = m - 1; j >= 0; j--) {
+      dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    }
+  }
+  const out = [];
+  let i = 0;
+  let j = 0;
+  while (i < n && j < m) {
+    if (a[i] === b[j]) {
+      i++;
+      j++;
+    } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+      out.push({ type: "-", line: a[i] });
+      i++;
+    } else {
+      out.push({ type: "+", line: b[j] });
+      j++;
+    }
+  }
+  while (i < n) out.push({ type: "-", line: a[i++] });
+  while (j < m) out.push({ type: "+", line: b[j++] });
+  return out;
+}
+
+function printDiff(rel) {
+  const current = fse.readFileSync(path.join(process.cwd(), rel), "utf8").split("\n");
+  const incoming = fse.readFileSync(path.join(TEMPLATES_DIR, rel), "utf8").split("\n");
+  console.log(chalk.bold(`  --- ${rel}`));
+  for (const { type, line } of diffLines(current, incoming)) {
+    console.log(type === "-" ? chalk.red(`    - ${line}`) : chalk.green(`    + ${line}`));
+  }
+}
+
+/** Best-effort, non-blocking check against the npm registry — silently skipped if offline. */
+function checkForUpdate() {
+  return new Promise((resolve) => {
+    const req = https.get(
+      `https://registry.npmjs.org/${PKG.name}/latest`,
+      { timeout: 1500, headers: { "user-agent": PKG.name } },
+      (res) => {
+        let body = "";
+        res.on("data", (chunk) => (body += chunk));
+        res.on("end", () => {
+          try {
+            const latest = JSON.parse(body).version;
+            if (latest && latest !== PKG.version) {
+              console.log(
+                chalk.yellow(`\nUpdate available: ${PKG.version} → ${latest}`) +
+                chalk.gray(`  (npm install -g ${PKG.name})`)
+              );
+            }
+          } catch {
+            /* malformed response — ignore */
+          }
+          resolve();
+        });
+      }
+    );
+    req.on("error", () => resolve());
+    req.on("timeout", () => {
+      req.destroy();
+      resolve();
+    });
+  });
 }
 
 function fileBelongsTo(rel, toolKeys) {
@@ -259,7 +353,7 @@ const program = new Command();
 program
   .name("claude-engineer")
   .description("Bootstrap and maintain a shared AI engineering setup (Claude Code, Cursor, AGENTS.md) in any repository.")
-  .version("1.3.0");
+  .version(PKG.version);
 
 program
   .command("init")
@@ -285,6 +379,7 @@ program
     if (projectTools.length) {
       console.log(chalk.bold("\nConfiguring this repo for: ") + toolLabels(projectTools) + "\n");
       report(copyTemplates({ tools: projectTools, force: opts.force }));
+      writeConfig({ tools, scope });
     }
 
     console.log(
@@ -300,6 +395,7 @@ program
   .command("sync")
   .description("Update managed files (.claude/commands, .claude/prompts, .cursor/rules) to the latest template version")
   .option("--dry-run", "show what would change without writing", false)
+  .option("--diff", "with --dry-run, show a line diff for each changed managed file", false)
   .action((opts) => {
     const tools = detectedTools();
     if (!tools.length) {
@@ -317,18 +413,21 @@ program
         if (exists && !isStale(rel)) continue;
         changes++;
         console.log((exists ? chalk.cyan("  would update  ") : chalk.green("  would create  ")) + rel);
+        if (opts.diff && exists) printDiff(rel);
       }
       if (!changes) console.log(chalk.gray("  nothing to do — all managed files are current"));
       return;
     }
     report(copyTemplates({ tools, managedOnly: true }));
+    if (readConfig()) writeConfig({});
     console.log(chalk.gray("\nCLAUDE.md, AGENTS.md and docs/ are yours — sync never touches them."));
   });
 
 program
   .command("doctor")
   .description("Check that the AI engineering setup in this repo is complete")
-  .action(() => {
+  .option("--skip-update-check", "don't check npm for a newer version of this CLI", false)
+  .action(async (opts) => {
     const tools = detectedTools();
     if (!tools.length) {
       console.log(chalk.red("No AI tool configuration found in this repo.") + " Run " + chalk.yellow("claude-engineer init") + " first.");
@@ -336,6 +435,15 @@ program
       return;
     }
     console.log(chalk.bold("Checking setup for: ") + toolLabels(tools) + "\n");
+
+    const config = readConfig();
+    if (config && config.version && config.version !== PKG.version) {
+      console.log(
+        chalk.yellow(`  note     `) +
+        `this repo was last synced with claude-engineer ${config.version}, you're running ${PKG.version} — run ` +
+        chalk.yellow("claude-engineer sync") + " to catch it up\n"
+      );
+    }
 
     let missing = 0;
     let outdated = 0;
@@ -369,6 +477,8 @@ program
       );
       process.exitCode = 1;
     }
+
+    if (!opts.skipUpdateCheck) await checkForUpdate();
   });
 
 program
